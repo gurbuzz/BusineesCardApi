@@ -63,3 +63,4 @@
 /home/ata/Projects/BusinessCardAPI/obj/Debug/net8.0/BusinessCardAPI.pdb
 /home/ata/Projects/BusinessCardAPI/obj/Debug/net8.0/BusinessCardAPI.genruntimeconfig.cache
 /home/ata/Projects/BusinessCardAPI/obj/Debug/net8.0/ref/BusinessCardAPI.dll
+/home/ata/Projects/BusinessCardAPI/obj/Debug/net8.0/BusinessCardAPI.sourcelink.json
