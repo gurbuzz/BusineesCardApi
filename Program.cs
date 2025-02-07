@@ -1,26 +1,39 @@
 using BusinessCardAPI.Services;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Configuration;
+using Microsoft.OpenApi.Models; // Swagger için gerekli
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.UseUrls("http://localhost:5001");
-// Servisleri kaydet
-builder.Services.AddHttpClient<LLMService>();
+
+// Servis kayıtları
+builder.Services.AddHttpClient<OllamaClient>();
+builder.Services.AddTransient<LLMService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-builder.Services.AddSingleton<IConfiguration>(builder.Configuration);
+
+// Swagger yapılandırması
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "BusinessCardAPI",
+        Version = "v1",
+        Description = "Business Card Extraction API"
+    });
+});
 
 var app = builder.Build();
 
-// Geliştirme modunda Swagger UI kullan
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "BusinessCardAPI v1");
+    });
 }
 
 app.UseRouting();
