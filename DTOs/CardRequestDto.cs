@@ -4,6 +4,6 @@ namespace BusinessCardAPI.DTOs
     {
         public string? Message { get; set; }
         public string? SessionId { get; set; }
-        public string? Mode { get; set; }
+
     }
 }
