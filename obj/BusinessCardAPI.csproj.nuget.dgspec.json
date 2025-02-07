@@ -10,11 +10,11 @@
         "projectUniqueName": "/home/ata/Projects/BusinessCardAPI/BusinessCardAPI.csproj",
         "projectName": "BusinessCardAPI",
         "projectPath": "/home/ata/Projects/BusinessCardAPI/BusinessCardAPI.csproj",
-        "packagesPath": "/root/.nuget/packages/",
+        "packagesPath": "/home/ata/.nuget/packages/",
         "outputPath": "/home/ata/Projects/BusinessCardAPI/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "/root/.nuget/NuGet/NuGet.Config"
+          "/home/ata/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net8.0"

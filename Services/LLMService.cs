@@ -21,105 +21,105 @@ namespace BusinessCardAPI.Services
             _logger = logger;
         }
 
+        /// <summary>
+        /// Yeni ollama endpointi üzerinden prompt gönderir, gelen yanıtı BusinessCard nesnesine çevirir.
+        /// </summary>
         public async Task<CardResponseDto> SendToLLM(CardRequestDto requestDto, string workspaceSlug)
         {
             _logger.LogInformation("=== [LLMService.SendToLLM] Başladı ===");
 
-            string? apiKey = _config["API_KEY"];
-            string? baseUrl = _config["BaseUrl"];
-            string requestUrl = $"{baseUrl}/{workspaceSlug}/chat";
+            // Ollama endpointi kullanılacak, URL sabit:
+            string requestUrl = "http://localhost:11434/api/generate";
 
-            if (string.IsNullOrWhiteSpace(requestDto.Mode))
+            // Prompt: LLM'den sadece ilgili alanları çekmesini istiyoruz.
+            string prompt = "only find to 'full name', 'titles', 'organization', 'phone', 'email', 'address', 'webAddress' in the text. \n\n text: " + requestDto.Message;
+            _logger.LogInformation("Ollama'ya gönderilecek prompt: {Prompt}", prompt);
+
+            // İstek için gerekli JSON gövdesi:
+            var requestBody = new
             {
-                requestDto.Mode = "chat";
-            }
+                model = "llama3.2:1b",
+                prompt = prompt,
+                stream = false,
+                max_tokens = 200
+            };
 
-            // AI modelden JSON formatında cevap almak için mesajın başına ek bilgi ekleniyor.
-            requestDto.Message = "find to “full name”, “titles”,“organization” , “phone”, “email”,“Adress”, “webAddress”\n" + requestDto.Message;
-
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
-
-            _logger.LogInformation("API isteği gönderiliyor. URL: {Url}", requestUrl);
-            _logger.LogInformation("İstek Body (RequestDto): {RequestBody}", JsonSerializer.Serialize(requestDto));
-
-            var response = await _httpClient.PostAsJsonAsync(requestUrl, requestDto);
+            var response = await _httpClient.PostAsJsonAsync(requestUrl, requestBody);
             _logger.LogInformation("Yanıt Kodu: {StatusCode}", response.StatusCode);
 
             string responseContent = await response.Content.ReadAsStringAsync();
-            _logger.LogInformation("Ham Yanıt (JSON): {ResponseJson}", responseContent);
+            _logger.LogInformation("Ollama'dan Gelen Yanıt (JSON): {ResponseContent}", responseContent);
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("API Hatası: {StatusCode} - {ResponseJson}", response.StatusCode, responseContent);
-                throw new HttpRequestException($"API Hatası: {response.StatusCode}");
+                _logger.LogError("Ollama API Hatası: {StatusCode} - {ResponseContent}", response.StatusCode, responseContent);
+                throw new HttpRequestException($"Ollama API Hatası: {response.StatusCode}");
             }
 
+            // Gelen yanıtı JSON olarak parse ediyoruz.
             using var rootJson = JsonDocument.Parse(responseContent);
             var rootElement = rootJson.RootElement;
 
-            string? textResponse = null;
-            if (rootElement.TryGetProperty("textResponse", out var textRespProp))
+            string? extractedText = null;
+            if (rootElement.TryGetProperty("response", out var respProp))
             {
-                textResponse = textRespProp.GetString();
+                extractedText = respProp.GetString();
             }
 
-            if (string.IsNullOrWhiteSpace(textResponse))
+            if (string.IsNullOrWhiteSpace(extractedText))
             {
-                _logger.LogWarning("textResponse alanı boş döndü, boş CardData dönüyor.");
+                _logger.LogWarning("Gelen extracted text boş. Boş BusinessCard dönüyoruz.");
                 _logger.LogInformation("=== [LLMService.SendToLLM] Bitti ===");
                 return new CardResponseDto { CardData = new BusinessCard() };
             }
 
-            _logger.LogInformation("textResponse Ham İçerik: {Text}", textResponse);
+            _logger.LogInformation("Ollama'dan alınan extracted text: {ExtractedText}", extractedText);
 
-            // textResponse metnini BusinessCard nesnesine dönüştürüyoruz.
-            var card = ParseTextResponseToBusinessCard(textResponse);
+            // Gelen metni BusinessCard nesnesine dönüştürüyoruz.
+            BusinessCard card = ParseExtractedTextToBusinessCard(extractedText);
 
-            _logger.LogInformation("Çıkan Son CardData: {Result}", JsonSerializer.Serialize(card));
+            _logger.LogInformation("Ayrıştırılan BusinessCard: {CardData}", JsonSerializer.Serialize(card));
             _logger.LogInformation("=== [LLMService.SendToLLM] Bitti ===");
 
             return new CardResponseDto { CardData = card };
         }
 
         /// <summary>
-        /// LLM'den gelen ham metni satır satır işleyip BusinessCard nesnesine dönüştürür.
+        /// Ollama'dan gelen metni satır satır ayrıştırarak BusinessCard nesnesine çevirir.
         /// Beklenen format örneği:
         /// 
-        /// Here are the extracted information:
-        /// 
-        /// * Full Name: Fahri ÖZSUNGUR
-        /// * Titles: Doçenti (Professor), Doç. Dr.
-        /// * Organization: Sosyal Hizmet (Social Service)
-        /// * Phone: #90 324 361 00 O1 - 15317, *90 324 36108 88 0532 258 19
-        /// * Email: fahriozsungurE@gmail.com
-        /// * Address: Çiftlikköy Kampüsü, Mersin Üniversitesi, Mersin, Türkiye (33343)
-        /// * WebAddress: Not available
+        /// Here is the extracted information:
+        ///
+        /// - Full name: Fahri ÖZSUNGUR
+        /// - Titles: Social Service Professor & Doctor (Dr.)
+        /// - Organization: Ministry of Economy and Industry Faculty of Economics and Administration Faculty 
+        /// - Phone: +90 324 361 00
+        /// - Email: fahriozsungurEgmail.com
+        /// - Address: Çiftlikköy Campus, Mersin University, Çiftlikköy Kampüsü, 33343, Mersin, Türkiye
         /// </summary>
-        private BusinessCard ParseTextResponseToBusinessCard(string text)
+        private BusinessCard ParseExtractedTextToBusinessCard(string text)
         {
             var card = new BusinessCard();
-
-            // Metni satırlara bölüyoruz.
             var lines = text.Split('\n');
 
             foreach (var line in lines)
             {
                 var trimmedLine = line.Trim();
 
-                // Sadece "*" ile başlayan satırları işliyoruz.
-                if (!trimmedLine.StartsWith("*"))
+                // Sadece "-" ile başlayan satırları işliyoruz.
+                if (!trimmedLine.StartsWith("-"))
                     continue;
 
-                // "*" karakterini kaldırıp kalan kısmı temizliyoruz.
-                var content = trimmedLine.Substring(1).Trim();
+                // "-" karakterini kaldırıp kalan kısmı alıyoruz.
+                string content = trimmedLine.Substring(1).Trim();
 
-                // İlk ":" karakteri anahtar-değer ayrımı için.
+                // İlk ":" karakteri anahtar-değer ayrımını yapmamızı sağlar.
                 int colonIndex = content.IndexOf(':');
                 if (colonIndex <= 0)
                     continue;
 
-                var key = content.Substring(0, colonIndex).Trim().ToLower();
-                var value = content.Substring(colonIndex + 1).Trim();
+                string key = content.Substring(0, colonIndex).Trim().ToLower();
+                string value = content.Substring(colonIndex + 1).Trim();
 
                 _logger.LogInformation("Ayrıştırılan Alan -> Key: {Key}, Value: {Value}", key, value);
 
@@ -142,52 +142,53 @@ namespace BusinessCardAPI.Services
             return card;
         }
 
+        /// <summary>
+        /// Eğer ham yanıtı olduğu gibi görmek istersen, sendRaw metodunu kullanabilirsin.
+        /// </summary>
         public async Task<string> SendRawToLLM(CardRequestDto requestDto, string workspaceSlug)
         {
             _logger.LogInformation("=== [LLMService.SendRawToLLM] Başladı ===");
 
-            string? apiKey = _config["API_KEY"];
-            string? baseUrl = _config["BaseUrl"];
-            string requestUrl = $"{baseUrl}/{workspaceSlug}/chat";
-
-            if (string.IsNullOrWhiteSpace(requestDto.Mode))
+            string requestUrl = "http://localhost:11434/api/generate";
+            string prompt = "only find to 'full name', 'titles', 'organization', 'phone', 'email', 'address', 'webAddress' in the text. \n\n text: " + requestDto.Message;
+            var requestBody = new
             {
-                requestDto.Mode = "chat";
-            }
+                model = "llama3.2:1b",
+                prompt = prompt,
+                stream = false,
+                max_tokens = 200
+            };
 
-            // AI modelden JSON formatında cevap almak için mesajın başına ek bilgi ekleniyor.
-            requestDto.Message = "find to “full name”, “titles”,“organization” , “phone”, “email”,“Adress”, “webAddress”\n" + requestDto.Message;
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _config["API_KEY"]);
 
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
+            _logger.LogInformation("Ollama'ya gönderilen istek URL: {Url}", requestUrl);
+            _logger.LogInformation("Ollama'ya gönderilen istek Body: {RequestBody}", System.Text.Json.JsonSerializer.Serialize(requestBody));
 
-            _logger.LogInformation("API isteği gönderiliyor. URL: {Url}", requestUrl);
-            _logger.LogInformation("İstek Body (RequestDto): {RequestBody}", JsonSerializer.Serialize(requestDto));
-
-            var response = await _httpClient.PostAsJsonAsync(requestUrl, requestDto);
+            var response = await _httpClient.PostAsJsonAsync(requestUrl, requestBody);
             _logger.LogInformation("Yanıt Kodu: {StatusCode}", response.StatusCode);
 
             string responseContent = await response.Content.ReadAsStringAsync();
-            _logger.LogInformation("Ham Yanıt (JSON): {ResponseJson}", responseContent);
+            _logger.LogInformation("Ollama'dan Gelen Yanıt (JSON): {ResponseContent}", responseContent);
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("API Hatası: {StatusCode} - {ResponseJson}", response.StatusCode, responseContent);
-                throw new HttpRequestException($"API Hatası: {response.StatusCode}");
+                _logger.LogError("Ollama API Hatası: {StatusCode} - {ResponseContent}", response.StatusCode, responseContent);
+                throw new HttpRequestException($"Ollama API Hatası: {response.StatusCode}");
             }
 
             using var rootJson = JsonDocument.Parse(responseContent);
             var rootElement = rootJson.RootElement;
 
-            string? textResponse = null;
-            if (rootElement.TryGetProperty("textResponse", out var textRespProp))
+            string? extractedText = null;
+            if (rootElement.TryGetProperty("response", out var respProp))
             {
-                textResponse = textRespProp.GetString();
+                extractedText = respProp.GetString();
             }
 
-            _logger.LogInformation("LLM'den gelen ham textResponse: {TextResponse}", textResponse);
+            _logger.LogInformation("Ollama'dan gelen ham extracted text: {ExtractedText}", extractedText);
             _logger.LogInformation("=== [LLMService.SendRawToLLM] Bitti ===");
 
-            return textResponse ?? string.Empty;
+            return extractedText ?? string.Empty;
         }
     }
 }

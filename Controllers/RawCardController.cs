@@ -24,10 +24,10 @@ namespace BusinessCardAPI.Controllers
                 return BadRequest(new { error = "Mesaj boş olamaz." });
             }
 
-            string workspaceSlug = "llama";
+            // Yeni ollama endpointi kullanıldığı için workspaceSlug artık kullanılmıyor.
             try
             {
-                var rawText = await _llmService.SendRawToLLM(requestDto, workspaceSlug);
+                var rawText = await _llmService.SendRawToLLM(requestDto, string.Empty);
                 return Ok(new RawResponseDto { RawText = rawText });
             }
             catch (Exception ex)
