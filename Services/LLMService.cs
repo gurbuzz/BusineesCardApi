@@ -20,8 +20,16 @@ namespace BusinessCardAPI.Services
         }
 
         /// <summary>
-        /// Ollama endpointi üzerinden prompt gönderir, yanıtı ayrıştırıp BusinessCard nesnesine çevirir.
-        /// </summary> 
+        /// API Key'i appsettings.json'dan çeker
+        /// </summary>
+        public string GetConfiguredApiKey()
+        {
+            return _config["API_KEY"] ?? string.Empty;
+        }
+
+        /// <summary>
+        /// Ollama'ya istek atarak işlenmiş kart verisini döndürür.
+        /// </summary>
         public async Task<CardResponseDto> SendToLLM(CardRequestDto requestDto, string workspaceSlug)
         {
             _logger.LogInformation("=== [LLMService.SendToLLM] Başladı ===");
@@ -46,7 +54,7 @@ namespace BusinessCardAPI.Services
         }
 
         /// <summary>
-        /// Ham yanıtı döndürmek için.
+        /// Ollama'dan ham yanıtı döndürür.
         /// </summary>
         public async Task<string> SendRawToLLM(CardRequestDto requestDto, string workspaceSlug)
         {

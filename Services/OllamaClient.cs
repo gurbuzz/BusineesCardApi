@@ -20,6 +20,9 @@ namespace BusinessCardAPI.Services
             _logger = logger;
         }
 
+        /// <summary>
+        /// Ollama'ya istek atar ve cevabı döndürür.
+        /// </summary>
         public async Task<string> SendRequestAsync(string prompt)
         {
             var requestBody = new
@@ -30,8 +33,8 @@ namespace BusinessCardAPI.Services
                 max_tokens = 200
             };
 
-            // Gerekliyse API_KEY kullanılıyor
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _config["API_KEY"]);
+            _httpClient.DefaultRequestHeaders.Authorization = 
+                new AuthenticationHeaderValue("Bearer", _config["API_KEY"]);
 
             _logger.LogInformation("Ollama'ya istek gönderiliyor. URL: {Url}", OllamaUrl);
             _logger.LogInformation("Request Body: {RequestBody}", JsonSerializer.Serialize(requestBody));
@@ -42,27 +45,14 @@ namespace BusinessCardAPI.Services
             string responseContent = await response.Content.ReadAsStringAsync();
             _logger.LogInformation("Yanıt İçeriği: {ResponseContent}", responseContent);
 
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogError("Ollama API Hatası: {StatusCode} - {ResponseContent}", response.StatusCode, responseContent);
-                throw new HttpRequestException($"Ollama API Hatası: {response.StatusCode}");
-            }
-
-            using var rootJson = JsonDocument.Parse(responseContent);
-            var rootElement = rootJson.RootElement;
-
-            string? extractedText = null;
-            if (rootElement.TryGetProperty("response", out var respProp))
-            {
-                extractedText = respProp.GetString();
-            }
-
-            return extractedText ?? string.Empty;
+            return response.IsSuccessStatusCode ? responseContent : throw new HttpRequestException("Ollama API Hatası");
         }
 
+        /// <summary>
+        /// Ollama'ya ham (işlenmemiş) metin isteği atar ve yanıtı döndürür.
+        /// </summary>
         public async Task<string> SendRawRequestAsync(string prompt)
         {
-            // İhtiyaç duyulursa ham metni almak için de aynı metodu kullanabiliriz.
             return await SendRequestAsync(prompt);
         }
     }

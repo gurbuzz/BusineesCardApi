@@ -24,7 +24,13 @@ namespace BusinessCardAPI.Controllers
                 return BadRequest(new { error = "Mesaj boş olamaz." });
             }
 
-            // Yeni ollama endpointi kullanıldığı için workspaceSlug artık kullanılmıyor.
+            // API Key doğrulama
+            var configuredApiKey = _llmService.GetConfiguredApiKey();
+            if (string.IsNullOrWhiteSpace(requestDto.ApiKey) || requestDto.ApiKey != configuredApiKey)
+            {
+                return Unauthorized(new { error = "Geçersiz API anahtarı." });
+            }
+
             try
             {
                 var rawText = await _llmService.SendRawToLLM(requestDto, string.Empty);
