@@ -1,29 +1,28 @@
-## Visual Studio ve .NET ile ilgili genel dosyalar
-# Build çıktıları
+# Build çıktıları ve ara dosyalar
 bin/
 obj/
 
-# Kullanıcıya özel ayarlar
+# Visual Studio ile ilgili geçici ve kullanıcıya özel dosyalar
+.vs/
 *.user
 *.suo
 *.userosscache
 *.sln.docstates
 
-# Paket dosyaları
+# NuGet paketleri
 *.nupkg
-# Paketleri geri yüklemeden yüklemeyelim
 packages/
 
 # Log dosyaları
 *.log
 
-# VS Code settings
+# VS Code ayarları
 .vscode/
 
-# Diğer geçici dosyalar
+# Geçici dosyalar
 *.tmp
 *.temp
 
-# Gizli dosyalar (örneğin, API anahtarlarını içeren config dosyaları)
+# Gizli dosyalar (örneğin, API anahtarları içeren konfigürasyonlar)
 secrets.json
 appsettings.Development.json

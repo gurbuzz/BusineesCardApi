@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Text.Json;
 using BusinessCardAPI.Models;
 using Microsoft.Extensions.Logging;
 
@@ -7,6 +10,23 @@ namespace BusinessCardAPI.Services
     {
         public static BusinessCard Parse(string extractedText, ILogger logger)
         {
+            // Eğer metin JSON formatında ise, "response" alanını çekiyoruz.
+            if (extractedText.Trim().StartsWith("{"))
+            {
+                try
+                {
+                    using var jsonDoc = JsonDocument.Parse(extractedText);
+                    if (jsonDoc.RootElement.TryGetProperty("response", out var responseElement))
+                    {
+                        extractedText = responseElement.GetString();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError("JSON ayrıştırma hatası: {Message}", ex.Message);
+                }
+            }
+
             var card = new BusinessCard();
             var lines = extractedText.Split('\n');
 
