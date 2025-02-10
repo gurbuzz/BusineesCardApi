@@ -18,7 +18,8 @@ namespace BusinessCardAPI.Services
                     using var jsonDoc = JsonDocument.Parse(extractedText);
                     if (jsonDoc.RootElement.TryGetProperty("response", out var responseElement))
                     {
-                        extractedText = responseElement.GetString();
+                        // GetString() null dönebilir; null ise boş string atıyoruz.
+                        extractedText = responseElement.GetString() ?? "";
                     }
                 }
                 catch (Exception ex)
