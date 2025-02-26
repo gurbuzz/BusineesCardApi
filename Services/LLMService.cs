@@ -29,12 +29,17 @@ namespace BusinessCardAPI.Services
 
         /// <summary>
         /// Ollama'ya istek atarak işlenmiş kart verisini döndürür.
+        /// Gelen message içindeki satır sonlarını kaldırarak tek satır haline getirir.
         /// </summary>
         public async Task<CardResponseDto> SendToLLM(CardRequestDto requestDto, string workspaceSlug)
         {
             _logger.LogInformation("=== [LLMService.SendToLLM] Başladı ===");
 
-            string prompt = "only find to 'full name', 'titles', 'organization', 'phone', 'email', 'address', 'webAddress' in the text. \n\n text: " + requestDto.Message;
+            // Gelen metindeki satır sonlarını boşluk ile değiştiriyoruz. Message null ise varsayılan olarak boş string kullanılır.
+            string normalizedMessage = (requestDto.Message ?? string.Empty)
+                                        .Replace("\r\n", " ")
+                                        .Replace("\n", " ");
+            string prompt = "only find 'name','surname', 'titles', 'organization', 'phone', 'email', 'address', 'webAddress' in the text. \n\n text: " + normalizedMessage;
             _logger.LogInformation("Ollama prompt: {Prompt}", prompt);
 
             string extractedText = await _ollamaClient.SendRequestAsync(prompt);
@@ -55,12 +60,17 @@ namespace BusinessCardAPI.Services
 
         /// <summary>
         /// Ollama'dan ham yanıtı döndürür.
+        /// Gelen message içindeki satır sonlarını boşluk ile değiştirerek işleme alır.
         /// </summary>
         public async Task<string> SendRawToLLM(CardRequestDto requestDto, string workspaceSlug)
         {
             _logger.LogInformation("=== [LLMService.SendRawToLLM] Başladı ===");
 
-            string prompt = "only find to 'full name', 'titles', 'organization', 'phone', 'email', 'address', 'webAddress' in the text. \n\n text: " + requestDto.Message;
+            // Gelen metindeki satır sonlarını boşluk ile değiştiriyoruz. Message null ise varsayılan olarak boş string kullanılır.
+            string normalizedMessage = (requestDto.Message ?? string.Empty)
+                                        .Replace("\r\n", " ")   
+                                        .Replace("\n", " ");
+            string prompt = "only find 'name' , 'surname' , 'titles', 'organization', 'phone', 'email', 'address', 'webAddress' in the text. \n\n text: " + normalizedMessage;
             _logger.LogInformation("Ollama prompt: {Prompt}", prompt);
 
             string extractedText = await _ollamaClient.SendRawRequestAsync(prompt);

@@ -27,10 +27,9 @@ namespace BusinessCardAPI.Services
         {
             var requestBody = new
             {
-                model = "llama3.2:1b",
+                model = "llama3.2:latest",
                 prompt = prompt,
                 stream = false,
-                max_tokens = 200
             };
 
             _httpClient.DefaultRequestHeaders.Authorization = 
