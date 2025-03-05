@@ -105,6 +105,13 @@ namespace BusinessCardAPI.Services
                 }
             }
 
+            // Soyadı çıkarma yöntemi: Eğer Name alanı soyadı içeriyorsa, soyadı Name'den çıkartıyoruz.
+            if (!string.IsNullOrEmpty(card.Name) && !string.IsNullOrEmpty(card.Surname) &&
+                card.Name.EndsWith(card.Surname, StringComparison.OrdinalIgnoreCase))
+            {
+                card.Name = card.Name.Substring(0, card.Name.LastIndexOf(card.Surname, StringComparison.OrdinalIgnoreCase)).Trim();
+            }
+
             return card;
         }
 

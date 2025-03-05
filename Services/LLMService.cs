@@ -58,10 +58,6 @@ namespace BusinessCardAPI.Services
             return new CardResponseDto { CardData = card };
         }
 
-        /// <summary>
-        /// Ollama'dan ham yanıtı döndürür.
-        /// Gelen message içindeki satır sonlarını boşluk ile değiştirerek işleme alır.
-        /// </summary>
         public async Task<string> SendRawToLLM(CardRequestDto requestDto, string workspaceSlug)
         {
             _logger.LogInformation("=== [LLMService.SendRawToLLM] Başladı ===");
