@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using BusinessCardAPI.Models;
 using Microsoft.Extensions.Logging;
 
@@ -9,7 +10,7 @@ namespace BusinessCardAPI.Services
 {
     public static class BusinessCardParser
     {
-        public static BusinessCard Parse(string extractedText, ILogger logger)
+        public static async Task<BusinessCard> ParseAsync(string extractedText, ILogger logger)
         {
             // 1. Dış JSON’dan "rawText" alanını almaya çalışıyoruz.
             try
@@ -49,7 +50,8 @@ namespace BusinessCardAPI.Services
             // Eğer içerik JSON formatında değilse (düz metin ise)
             if (IsPlainTextFormat(extractedText))
             {
-                var fields = ParsePlainText(extractedText);
+                // ParsePlainText metodu CPU-bound olduğundan Task.Run ile asenkron hale getiriyoruz.
+                var fields = await Task.Run(() => ParsePlainText(extractedText));
                 card.Name = GetValue(fields, "name");
                 card.Surname = GetValue(fields, "surname");
                 card.Titles = GetValue(fields, "titles");
@@ -65,7 +67,7 @@ namespace BusinessCardAPI.Services
             }
             else
             {
-                // İçerik JSON formatında ise doğrudan JSON ayrıştırması yapıyoruz.
+                // İçerik JSON formatındaysa doğrudan JSON ayrıştırması yapıyoruz.
                 try
                 {
                     using var cardDoc = JsonDocument.Parse(extractedText);
@@ -115,37 +117,26 @@ namespace BusinessCardAPI.Services
             return card;
         }
 
-        /// <summary>
+
         /// Metin JSON formatında değilse düz metin olarak kabul ediyoruz.
-        /// </summary>
         private static bool IsPlainTextFormat(string text)
         {
             text = text.Trim();
             return !(text.StartsWith("{") && text.EndsWith("}"));
         }
 
-        /// <summary>
         /// Düz metin içeriğini satır satır ayrıştırır ve alanları bir sözlükte toplar.
         /// Hem "- field: value" hem de "1. field - value" gibi numaralı formatları destekler.
-        /// </summary>
         private static Dictionary<string, string> ParsePlainText(string text)
         {
             var fields = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            // Satırlara ayırıyoruz.
             var lines = text.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-
-            // Hem tireli hem de numaralı formatı yakalayan regex:
-            // Pattern açıklaması:
-            // ^(?:-|\d+\.)\s*(.+?)\s*[:-]\s*(.*)$
-            // Group 1: alan adı, Group 2: alan değeri
             var pattern = @"^(?:-|\d+\.)\s*(.+?)\s*[:-]\s*(.*)$";
             var regex = new Regex(pattern, RegexOptions.IgnoreCase);
 
             foreach (var rawLine in lines)
             {
                 var line = rawLine.Trim();
-                // Başlık satırlarını atlıyoruz.
                 if (line.StartsWith("Here are the extracted", StringComparison.OrdinalIgnoreCase))
                     continue;
 
@@ -158,10 +149,8 @@ namespace BusinessCardAPI.Services
                 }
             }
 
-            // Email alanında not varsa (ör. "assuming it's a typo") düzeltme yapıyoruz.
             if (fields.TryGetValue("email", out var emailValue) && emailValue.Contains("assuming"))
             {
-                // Örneğin "fahriozsungur@egmail.com" ifadesini düzeltiyoruz.
                 emailValue = emailValue.Replace("@egmail.com", "@gmail.com");
                 fields["email"] = emailValue;
             }
@@ -169,9 +158,7 @@ namespace BusinessCardAPI.Services
             return fields;
         }
 
-        /// <summary>
         /// Sözlükten belirli bir alanın değerini döndürür; bulunamazsa boş string verir.
-        /// </summary>
         private static string GetValue(Dictionary<string, string> dict, string key)
         {
             return dict.TryGetValue(key, out var value) ? value : string.Empty;

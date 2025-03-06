@@ -19,6 +19,11 @@ namespace BusinessCardAPI.Controllers
         [HttpPost("raw")]
         public async Task<IActionResult> GetRawResponse([FromBody] CardRequestDto requestDto)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             if (string.IsNullOrWhiteSpace(requestDto.Message))
             {
                 return BadRequest(new { error = "Mesaj boş olamaz." });
@@ -36,7 +41,7 @@ namespace BusinessCardAPI.Controllers
                 var rawText = await _llmService.SendRawToLLM(requestDto, string.Empty);
                 return Ok(new RawResponseDto { RawText = rawText });
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
                 return StatusCode(500, new { error = ex.Message });
             }

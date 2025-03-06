@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using BusinessCardAPI.Services;
 using BusinessCardAPI.DTOs;
-using System;
 using System.Threading.Tasks;
 
 namespace BusinessCardAPI.Controllers
@@ -20,6 +19,11 @@ namespace BusinessCardAPI.Controllers
         [HttpPost("process")]
         public async Task<IActionResult> ProcessCard([FromBody] CardRequestDto requestDto)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+
             if (string.IsNullOrWhiteSpace(requestDto.Message))
             {
                 return BadRequest(new { error = "Mesaj boş olamaz." });
@@ -37,7 +41,7 @@ namespace BusinessCardAPI.Controllers
                 var result = await _llmService.SendToLLM(requestDto, string.Empty);
                 return Ok(result);
             }
-            catch (Exception ex)
+            catch (System.Exception ex)
             {
                 return StatusCode(500, new { error = ex.Message });
             }

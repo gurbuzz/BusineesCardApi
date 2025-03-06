@@ -3,6 +3,7 @@ using BusinessCardAPI.DTOs;
 using BusinessCardAPI.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using System.Threading.Tasks;
 
 namespace BusinessCardAPI.Services
 {
@@ -19,23 +20,19 @@ namespace BusinessCardAPI.Services
             _logger = logger;
         }
 
-        /// <summary>
-        /// API Key'i appsettings.json'dan çeker
-        /// </summary>
+        /// API Key'i appsettings.json'dan çeker.
         public string GetConfiguredApiKey()
         {
             return _config["API_KEY"] ?? string.Empty;
         }
 
-        /// <summary>
         /// Ollama'ya istek atarak işlenmiş kart verisini döndürür.
         /// Gelen message içindeki satır sonlarını kaldırarak tek satır haline getirir.
-        /// </summary>
         public async Task<CardResponseDto> SendToLLM(CardRequestDto requestDto, string workspaceSlug)
         {
             _logger.LogInformation("=== [LLMService.SendToLLM] Başladı ===");
 
-            // Gelen metindeki satır sonlarını boşluk ile değiştiriyoruz. Message null ise varsayılan olarak boş string kullanılır.
+            // Gelen metindeki satır sonlarını boşluk ile değiştiriyoruz.
             string normalizedMessage = (requestDto.Message ?? string.Empty)
                                         .Replace("\r\n", " ")
                                         .Replace("\n", " ");
@@ -51,7 +48,8 @@ namespace BusinessCardAPI.Services
                 return new CardResponseDto { CardData = new BusinessCard() };
             }
 
-            BusinessCard card = BusinessCardParser.Parse(extractedText, _logger);
+            BusinessCard card = await BusinessCardParser.ParseAsync(extractedText, _logger);
+
             _logger.LogInformation("Ayrıştırılan BusinessCard: {CardData}", JsonSerializer.Serialize(card));
             _logger.LogInformation("=== [LLMService.SendToLLM] Bitti ===");
 
@@ -62,9 +60,8 @@ namespace BusinessCardAPI.Services
         {
             _logger.LogInformation("=== [LLMService.SendRawToLLM] Başladı ===");
 
-            // Gelen metindeki satır sonlarını boşluk ile değiştiriyoruz. Message null ise varsayılan olarak boş string kullanılır.
             string normalizedMessage = (requestDto.Message ?? string.Empty)
-                                        .Replace("\r\n", " ")   
+                                        .Replace("\r\n", " ")
                                         .Replace("\n", " ");
             string prompt = "only find 'name' , 'surname' , 'titles', 'organization', 'phone', 'email', 'address', 'webAddress' in the text. \n\n text: " + normalizedMessage;
             _logger.LogInformation("Ollama prompt: {Prompt}", prompt);

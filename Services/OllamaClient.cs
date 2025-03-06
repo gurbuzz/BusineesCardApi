@@ -20,9 +20,7 @@ namespace BusinessCardAPI.Services
             _logger = logger;
         }
 
-        /// <summary>
         /// Ollama'ya istek atar ve cevabı döndürür.
-        /// </summary>
         public async Task<string> SendRequestAsync(string prompt)
         {
             var requestBody = new
@@ -32,24 +30,28 @@ namespace BusinessCardAPI.Services
                 stream = false,
             };
 
-            _httpClient.DefaultRequestHeaders.Authorization = 
+            _httpClient.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", _config["API_KEY"]);
 
             _logger.LogInformation("Ollama'ya istek gönderiliyor. URL: {Url}", OllamaUrl);
             _logger.LogInformation("Request Body: {RequestBody}", JsonSerializer.Serialize(requestBody));
 
-            var response = await _httpClient.PostAsJsonAsync(OllamaUrl, requestBody);
+            // HttpResponseMessage nesnesini using bloğu içinde kullanıyoruz.
+            using var response = await _httpClient.PostAsJsonAsync(OllamaUrl, requestBody);
             _logger.LogInformation("Yanıt Kodu: {StatusCode}", response.StatusCode);
 
             string responseContent = await response.Content.ReadAsStringAsync();
             _logger.LogInformation("Yanıt İçeriği: {ResponseContent}", responseContent);
 
-            return response.IsSuccessStatusCode ? responseContent : throw new HttpRequestException("Ollama API Hatası");
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException("Ollama API Hatası");
+            }
+
+            return responseContent;
         }
 
-        /// <summary>
         /// Ollama'ya ham (işlenmemiş) metin isteği atar ve yanıtı döndürür.
-        /// </summary>
         public async Task<string> SendRawRequestAsync(string prompt)
         {
             return await SendRequestAsync(prompt);
