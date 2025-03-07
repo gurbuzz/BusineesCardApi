@@ -1,21 +1,68 @@
-# Bus-neesCardAp-BusinessCardAPI
+# BusinessCardAPI
 
-BusinessCardAPI, metin içerisindeki kişisel bilgileri ayrıştırarak bir BusinessCard nesnesine dönüştüren bir RESTful API'dir. Proje, Ollama (Llama tabanlı LLM) kullanarak metinden ilgili bilgileri çıkarır.
+Bu proje, kartvizit bilgilerinin (örneğin isim, soy isim, unvan, organizasyon, telefon, e-posta, adres ve web adresi gibi) yapay zeka kullanılarak ayrıştırılması amacıyla geliştirilmiş basit bir .NET web uygulamasıdır. Uygulama, kullanıcı tarafından gönderilen metin içerisindeki dil ve yazım hatalarını düzelttikten sonra, bu düzenlenmiş metni yapay zeka modeline göndererek doğru ve eksiksiz JSON çıktısı oluşturur.
 
-🚀 Özellikler
+## Özellikler
 
-Metin içerisindeki ad, ünvan, organizasyon, telefon, e-posta, adres ve web adresi bilgilerini tespit eder.
+- **Kart Bilgisi Ayrıştırma:** Düzeltilmiş metni alıp, ilgili kart bilgilerini JSON formatında sunar.
+- **REST API:** Kart işleme için `/api/v1/cards/process` uç noktasını sağlar.
+- **API Güvenliği:** API kullanımı için API anahtarı doğrulaması yapılır.
 
-Ollama LLM modeli ile doğal dil işleme tabanlı veri ayrıştırma.
+## Kurulum
 
-Swagger UI ile API endpoint'lerini test etme.
+Proje .NET 8 kullanılarak geliştirilmiştir.
 
-Proje, http://localhost:5001 adresinde çalışacaktır.
+```bash
+dotnet restore
+dotnet run
+```
 
-Swagger UI'yi görmek için:
+## Ollama Kurulumu
 
-http://localhost:5001/swagger
+Ollama'yı aşağıdaki gibi kurabilirsiniz:
 
-📌 API Endpoint'leri
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
 
-**1️⃣ **POST /api/v1/cards/process
+Kurulumdan sonra, Llama3.2 yapay zeka modelini indirmek için:
+
+```bash
+ollama run llama3.2:latest
+```
+
+Bu işlemden sonra ollama üzeriden kullanacağımız yapay zeka  modeli localhost:11434/api/generate serverinde aktif hale gelecektir.
+
+## Kullanım
+
+Endpoint:
+
+```http
+POST /api/v1/cards/process
+```
+
+### Örnek İstek
+
+```json
+{
+  "ApiKey": "YOUR_API_KEY",
+  "Message": "Ata gurbz, backend developer, atatech, 05000000000, ata@example.com, Mersin yenixehir"
+}
+```
+
+### Örnek Yanıt
+
+```json
+{
+  "cardData": {
+    "name": "Ata",
+    "surname": "Gürbüz",
+    "titles": "Backend Developer",
+    "organization": "",
+    "phone": "05000000000",
+    "email": [""],
+    "address": "Mersin Yenişehir",
+    "webAddress": ""
+  }
+}
+```
